@@ -195,7 +195,7 @@ class Renderer(api.PluginRenderer):
     def __init__(self, config: Config, layout: api.Layout, colors: api.Color) -> None:
         self.config = config
         self.colors = colors
-        self.font = layout.font("standings.font")
+        self.font = layout.font("standings")
         self.width = 64
         self.current_page_idx = 0
         self.last_page_switch = time.monotonic()
