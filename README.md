@@ -13,7 +13,7 @@ sudo ./venv/bin/pip install /path/to/mlb-led-scoreboard-magic-number
 Or directly from a Git repository after publishing it:
 
 ```bash
-sudo ./venv/bin/pip install git+https://github.com/YOURUSER/mlb-led-scoreboard-magic-number.git
+sudo ./venv/bin/pip install git+https://github.com/mcangeli/mlb-led-scoreboard-magic-number.git
 ```
 
 ## Configuration
