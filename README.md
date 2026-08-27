@@ -25,14 +25,14 @@ Add the plugin configuration:
   "magic_number": {
     "team": "Braves",
     "refresh_seconds": 300,
-    "page_duration": 4
+    "seconds_per_team": 4
   }
 }
 ```
 
 Set `team` to an MLB team name, city, abbreviation, or StatsAPI-recognized lookup value. If `team` is omitted, `null`, or an empty string, the plugin automatically builds a 12-team view containing the six division leaders and the three current wild-card leaders from each league.
 
-The renderer uses a font named `magic_number.font`. Add that font to the coordinates configuration using the same format as your existing plugin fonts (the example plugin in the scoreboard repository shows the pattern). `page_duration` controls how long each automatic standings page remains visible.
+The renderer uses the scoreboard's existing `standings.font`, so no separate magic-number font is required.
 
 Add the screen to `rotation.screens`:
 
@@ -48,42 +48,31 @@ For a configured team, the screen is stable. In automatic mode it rotates throug
 
 ## What the number means
 
-The plugin calculates a practical regular-season playoff magic number from the current standings:
+The plugin calculates a practical regular-season playoff magic number from the current standings. The current fourth wild-card team is used as the playoff cutoff.
 
-`163 - target wins - current fourth-wild-card wins?`
-
-More precisely, it uses the current fourth wild-card team's losses:
+Normally:
 
 `magic_number = 163 - target_wins - cutoff_team_losses`
 
-The cutoff is the best team currently outside the 12-team playoff field. A value of `0` means the team has already clinched based on the current standings; negative values are displayed as `0`.
+If the target has already won the head-to-head season series against the cutoff, a tied final record is sufficient under MLB's tiebreak hierarchy, so the number is reduced by one:
 
-This is the standard 162-game magic-number calculation and does not attempt to model every possible remaining-schedule/tiebreaker combination. MLB tiebreakers and games remaining can make an official clinching number differ in edge cases.
+`magic_number = 162 - target_wins - cutoff_team_losses`
+
+If the head-to-head series is tied and the clubs are in the same division, the plugin falls back to intradivision record, matching MLB's next tiebreak criterion. A tiebreak advantage is shown as `H2H+` or `DIV+` on the display. If the target trails the relevant tiebreak, the calculation remains conservative.
+
+MLB's current mathematical tiebreak procedure starts with head-to-head record, followed by intradivision record when applicable. citeturn0search9 The plugin does not attempt to model every possible multi-team clinching permutation or the later end-of-season tiebreak criteria, so an official MLB clinching number can differ in unusual edge cases.
 
 ## Display
 
-The renderer is styled after the compact 64x32 reference layout, with a cyan section header, dim divider, yellow magic number, and three-row standings pages.
-
-For a configured team, the display is approximately:
+The renderer is intentionally conservative for 32x32 and 64x32 boards:
 
 ```text
-ATL (82-64)
-----------------
-PLAYOFF:       M# 7
-CUTOFF:       SEA 75-71
+ATL 82-64 PLAYOFF
+MAGIC       7
+CUTOFF SEA 75-71 H2H
 ```
 
-With no team configured, automatic mode rotates through four pages:
-
-```text
-AL DIV LEADERS
-----------------
-ATL     82-64        M: 7
-NYY     81-65        M: 8
-CLE     79-67        M:10
-```
-
-followed by `NL DIV LEADERS`, `AL WILD CARD`, and `NL WILD CARD`. A magic number of `0` is rendered as `CLN`.
+When the team name is too wide for the board, it is abbreviated. Automatic mode cycles through the division and wild-card leaders.
 
 ## Development
 

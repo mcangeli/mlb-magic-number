@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mlb-led-scoreboard-magic-number"
-version = "0.1.0"
+version = "0.2.0"
 description = "Bullpen plugin for MLB-LED-Scoreboard showing MLB playoff magic numbers."
 requires-python = ">=3.9"
 dependencies = [

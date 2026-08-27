@@ -1,6 +1,6 @@
 import unittest
 
-from mlb_led_scoreboard_magic_number import TeamRecord, calculate_magic_numbers
+from mlb_led_scoreboard_magic_number import TeamRecord, calculate_magic_numbers, _head_to_head_result
 
 
 def team(i, league=103, division=1, wins=80, losses=60, rank=1, name=None):
@@ -38,6 +38,31 @@ class MagicNumberTests(unittest.TestCase):
         self.assertEqual(by_id[1].cutoff_team.team_id, 10)
         self.assertEqual(by_id[1].number, 163 - 90 - 67)
         self.assertEqual(by_id[10].number, 163 - 73 - 67)
+
+    def test_head_to_head_advantage_reduces_magic_number(self):
+        records = [
+            team(1, division=1, wins=80, losses=60, rank=1),
+            team(2, division=1, wins=78, losses=62, rank=2),
+            team(3, division=2, wins=77, losses=63, rank=1),
+            team(4, division=3, wins=76, losses=64, rank=1),
+            team(5, division=1, wins=75, losses=65, rank=3),
+            team(6, division=2, wins=74, losses=66, rank=2),
+            team(7, division=3, wins=73, losses=67, rank=2),
+            team(8, division=1, wins=72, losses=68, rank=4),
+            team(9, division=2, wins=71, losses=69, rank=3),
+            team(10, division=3, wins=70, losses=70, rank=3),
+        ]
+        # Team 1 has won its season series over the fourth wild card (team 10).
+        h2h = {(1, 10): (4, 2)}
+        numbers = calculate_magic_numbers(records, h2h)
+        by_id = {n.team.team_id: n for n in numbers}
+        self.assertEqual(by_id[1].number, 163 - 80 - 70 - 1)
+        self.assertEqual(by_id[1].tiebreak_note, "H2H+")
+
+    def test_head_to_head_reverse_key_is_supported(self):
+        a = team(1)
+        b = team(2)
+        self.assertEqual(_head_to_head_result(a, b, {(2, 1): (3, 2)}), 1)
 
     def test_already_clinched_is_zero(self):
         records = [
