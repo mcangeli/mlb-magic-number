@@ -13,7 +13,7 @@ sudo ./venv/bin/pip install /path/to/mlb-led-scoreboard-magic-number
 Or directly from a Git repository after publishing it:
 
 ```bash
-sudo ./venv/bin/pip install git+https://github.com/mcangeli/mlb-led-scoreboard-magic-number.git
+sudo ./venv/bin/pip install git+https://github.com/YOURUSER/mlb-led-scoreboard-magic-number.git
 ```
 
 ## Configuration
@@ -25,14 +25,14 @@ Add the plugin configuration:
   "magic_number": {
     "team": "Braves",
     "refresh_seconds": 300,
-    "seconds_per_team": 4
+    "page_duration": 4
   }
 }
 ```
 
 Set `team` to an MLB team name, city, abbreviation, or StatsAPI-recognized lookup value. If `team` is omitted, `null`, or an empty string, the plugin automatically builds a 12-team view containing the six division leaders and the three current wild-card leaders from each league.
 
-The renderer uses a font named `magic_number.font`. Add that font to the coordinates configuration using the same format as your existing plugin fonts (the example plugin in the scoreboard repository shows the pattern).
+The renderer uses a font named `magic_number.font`. Add that font to the coordinates configuration using the same format as your existing plugin fonts (the example plugin in the scoreboard repository shows the pattern). `page_duration` controls how long each automatic standings page remains visible.
 
 Add the screen to `rotation.screens`:
 
@@ -62,15 +62,28 @@ This is the standard 162-game magic-number calculation and does not attempt to m
 
 ## Display
 
-The renderer is intentionally conservative for 32x32 and 64x32 boards:
+The renderer is styled after the compact 64x32 reference layout, with a cyan section header, dim divider, yellow magic number, and three-row standings pages.
+
+For a configured team, the display is approximately:
 
 ```text
-PLAYOFF
-ATLANTA
-MAGIC 7
+ATL (82-64)
+----------------
+PLAYOFF:       M# 7
+CUTOFF:       SEA 75-71
 ```
 
-When the team name is too wide for the board, it is abbreviated. Automatic mode cycles through the division and wild-card leaders.
+With no team configured, automatic mode rotates through four pages:
+
+```text
+AL DIV LEADERS
+----------------
+ATL     82-64        M: 7
+NYY     81-65        M: 8
+CLE     79-67        M:10
+```
+
+followed by `NL DIV LEADERS`, `AL WILD CARD`, and `NL WILD CARD`. A magic number of `0` is rendered as `CLN`.
 
 ## Development
 
