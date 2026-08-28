@@ -237,7 +237,7 @@ class Data(api.PluginData):
             records = _fetch_standings()
             games = _fetch_season_games()
             numbers = calculate_magic_numbers(records, games)
-            LOGGER.info("[Magic Number] Refreshing Stats for %s", self.config.team)
+            LOGGER.info("[Magic Number] Refreshing Stats for %s", self.config.team_query)
 
             if self.config.team_query:
                 matches = statsapi.lookup_team(self.config.team_query)
