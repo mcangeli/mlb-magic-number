@@ -231,11 +231,13 @@ class Data(api.PluginData):
     def update(self, force: bool = False) -> api.UpdateStatus:
         now = time.monotonic()
         if not force and now - self._last_update < self.config.refresh_seconds:
+            LOGGING.info("[Magic Number] No Update Needed %s", self.config.refresh_seconds)
             return api.UpdateStatus.DEFERRED
         try:
             records = _fetch_standings()
             games = _fetch_season_games()
             numbers = calculate_magic_numbers(records, games)
+            LOGGING.info("[Magic Number] Refreshing Stats")
 
             if self.config.team_query:
                 matches = statsapi.lookup_team(self.config.team_query)
