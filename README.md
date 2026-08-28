@@ -1,40 +1,30 @@
 # MLB-LED-Scoreboard Magic Number Plugin
 
-A `bullpen` plugin for [MLB-LED-Scoreboard](https://github.com/MLB-LED-Scoreboard/mlb-led-scoreboard) that uses [MLB-StatsAPI](https://pypi.org/project/MLB-StatsAPI/) to display a team's playoff magic number.
+A Bullpen plugin for MLB-LED-Scoreboard that displays a playoff magic number using MLB-StatsAPI standings and regular-season game results.
+
+Compatible with the current Bullpen plugin API used by MLB-LED-Scoreboard v9.x. The plugin uses the existing `standings.font`; no `magic_number.font` entry is required. The current scoreboard documents that a plugin implements Config, Data and Renderer classes, and that `render()` is called once per frame with the current scrolling position.
 
 ## Install
-
-From the scoreboard virtual environment:
 
 ```bash
 sudo ./venv/bin/pip install /path/to/mlb-led-scoreboard-magic-number
 ```
 
-Or directly from a Git repository after publishing it:
-
-```bash
-sudo ./venv/bin/pip install git+https://github.com/YOURUSER/mlb-led-scoreboard-magic-number.git
-```
-
-## Configuration
-
-Add the plugin configuration:
+## config.json
 
 ```json
 "plugins": {
   "magic_number": {
     "team": "Braves",
     "refresh_seconds": 300,
-    "seconds_per_team": 4
+    "seconds_per_team": 6,
+    "team_abbreviation": false,
+    "show_cutoff": true
   }
 }
 ```
 
-Set `team` to an MLB team name, city, abbreviation, or StatsAPI-recognized lookup value. If `team` is omitted, `null`, or an empty string, the plugin automatically builds a 12-team view containing the six division leaders and the three current wild-card leaders from each league.
-
-The renderer uses the scoreboard's existing `standings.font`, so no separate magic-number font is required.
-
-Add the screen to `rotation.screens`:
+Leave `team` empty or omit it to cycle through the current playoff field. Add the screen to `rotation.screens`:
 
 ```json
 {
@@ -44,37 +34,38 @@ Add the screen to `rotation.screens`:
 }
 ```
 
-For a configured team, the screen is stable. In automatic mode it rotates through the playoff leaders.
+The upstream project documents that plugins must be installed and then added to the `screens` configuration before they will appear.
 
-## What the number means
+## Magic-number calculation
 
-The plugin calculates a practical regular-season playoff magic number from the current standings. The current fourth wild-card team is used as the playoff cutoff.
+The baseline is the conventional regular-season formula:
 
-Normally:
+`163 - target wins - cutoff losses`
 
-`magic_number = 163 - target_wins - cutoff_team_losses`
+The cutoff is the current fourth wild-card team in the target's league. The plugin also reads the completed regular-season schedule and checks the target's season-series record against the cutoff. If the season series is already decided in the target's favor, a tied final record is enough and the magic number is reduced by one. A partially completed or tied season series is not assumed to favor either team.
 
-If the target has already won the head-to-head season series against the cutoff, a tied final record is sufficient under MLB's tiebreak hierarchy, so the number is reduced by one:
+This is intentionally conservative and is not a replacement for MLB's official clinching computation in every multi-team tie scenario.
 
-`magic_number = 162 - target_wins - cutoff_team_losses`
+MLB-StatsAPI exposes the standings endpoint and schedule endpoint used by the plugin.
 
-If the head-to-head series is tied and the clubs are in the same division, the plugin falls back to intradivision record, matching MLB's next tiebreak criterion. A tiebreak advantage is shown as `H2H+` or `DIV+` on the display. If the target trails the relevant tiebreak, the calculation remains conservative.
+## Scrolling
 
-MLB's current mathematical tiebreak procedure starts with head-to-head record, followed by intradivision record when applicable. citeturn0search9 The plugin does not attempt to model every possible multi-team clinching permutation or the later end-of-season tiebreak criteria, so an official MLB clinching number can differ in unusual edge cases.
+Any rendered text wider than the 64-pixel display is automatically marquee-scrolled. The renderer uses Bullpen's `scrolling_text_pos` frame position, so there is no custom render loop. This follows the Bullpen renderer contract.
 
 ## Display
 
-The renderer is intentionally conservative for 32x32 and 64x32 boards:
+The default 64x32 layout is compact:
 
 ```text
-ATL 82-64 PLAYOFF
-MAGIC       7
-CUTOFF SEA 75-71 H2H
+ATLANTA  82-64
+----------------
+PLAYOFF        M#7
+CUT SEA 75-71 H2H+
 ```
 
-When the team name is too wide for the board, it is abbreviated. Automatic mode cycles through the division and wild-card leaders.
+A clinched team displays `CLINCHED` instead of a magic number.
 
-## Development
+## Tests
 
 ```bash
 python -m unittest discover -s tests -v
