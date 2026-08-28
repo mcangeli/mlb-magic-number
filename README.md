@@ -74,3 +74,8 @@ A clinched team displays `CLINCHED` instead of a magic number.
 python -m unittest discover -s tests -v
 python -m pip install -e .
 ```
+# Images
+<img width="1349" height="1016" alt="image" src="https://github.com/user-attachments/assets/154d420e-0359-44a3-a8f0-87567642a022" />
+
+<img width="1349" height="1016" alt="image" src="https://github.com/user-attachments/assets/aa7c3bc0-bc74-4b77-b503-6a9bd0a0f22a" />
+
