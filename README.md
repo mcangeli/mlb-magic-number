@@ -2,12 +2,15 @@
 
 A Bullpen plugin for MLB-LED-Scoreboard that displays a playoff magic number using MLB-StatsAPI standings and regular-season game results.
 
+<img width="1076" height="566" alt="image" src="https://github.com/user-attachments/assets/8bfdfdd5-026b-4b14-a190-cbed9f34df6f" />
+
+
 Compatible with the current Bullpen plugin API used by MLB-LED-Scoreboard v9.x. The plugin uses the existing `standings.font`; no `magic_number.font` entry is required. The current scoreboard documents that a plugin implements Config, Data and Renderer classes, and that `render()` is called once per frame with the current scrolling position.
 
 ## Install
 
 ```bash
-sudo ./venv/bin/pip install /path/to/mlb-led-scoreboard-magic-number
+sudo ./venv/bin/pip install git+https://github.com/mcangeli/mlb-magic-number
 ```
 
 ## config.json
