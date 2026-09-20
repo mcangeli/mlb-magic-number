@@ -1,6 +1,5 @@
 import sys, types, unittest
 
-# Keep calculation tests independent of the scoreboard runtime dependencies.
 statsapi = types.ModuleType("statsapi")
 bullpen = types.ModuleType("bullpen")
 bullpen_api = types.ModuleType("bullpen.api")
@@ -18,43 +17,45 @@ bullpen_api.renderer = types.SimpleNamespace(graphics=object)
 bullpen_logging.LOGGER = Dummy()
 sys.modules.update({"statsapi": statsapi, "bullpen": bullpen, "bullpen.api": bullpen_api, "bullpen.logging": bullpen_logging})
 
-from mlb_led_scoreboard_magic_number import TeamRecord, _head_to_head, calculate_magic_numbers
+from mlb_led_scoreboard_magic_number import TeamRecord, calculate_magic_numbers
 
+def team(team_id, abbr, league, division, wins, losses, div_rank, wc_rank=99):
+    return TeamRecord(team_id, abbr, abbr, abbr, league, division, str(division),
+                      wins, losses, div_rank, wc_rank, wins / (wins + losses))
 
-def team(i, league=103, division=1, wins=80, losses=60, rank=1, wc=1, name=None):
-    return TeamRecord(i, name or f"Team {i}", name or f"Team {i}", f"T{i}", league, division, "Test", wins, losses, rank, wc, wins/(wins+losses))
-
-
-class MagicNumberTests(unittest.TestCase):
-    def test_h2h_advantage_reduces_magic_number(self):
-        records = [
-            team(1, wins=90, losses=50, rank=1, wc=99),
-            team(2, division=1, wins=80, losses=60, rank=2, wc=1),
-            team(3, division=2, wins=89, losses=51, rank=1, wc=99),
-            team(4, division=3, wins=88, losses=52, rank=1, wc=99),
-            team(5, division=1, wins=76, losses=64, rank=3, wc=2),
-            team(6, division=2, wins=75, losses=65, rank=2, wc=3),
-            team(7, division=3, wins=74, losses=66, rank=2, wc=4),
-            team(8, division=1, wins=73, losses=67, rank=4, wc=5),
+class RaceSelectionTests(unittest.TestCase):
+    def setUp(self):
+        self.records = [
+            team(1, "ATL", 104, 204, 90, 60, 1),
+            team(2, "PHI", 104, 204, 84, 66, 2, 4),
+            team(3, "NYM", 104, 204, 86, 64, 3, 3),
+            team(4, "MIL", 104, 205, 92, 58, 1),
+            team(5, "CHC", 104, 205, 88, 62, 2, 1),
+            team(6, "STL", 104, 205, 75, 75, 3, 6),
+            team(7, "LAD", 104, 203, 91, 59, 1),
+            team(8, "SDP", 104, 203, 87, 63, 2, 2),
+            team(9, "ARI", 104, 203, 82, 68, 3, 5),
         ]
-        games = [{"status":{"abstractGameState":"Final"}, "teams":{"home":{"team":{"id":1},"isWinner":True},"away":{"team":{"id":7},"isWinner":False}}}]
-        numbers = {n.team.team_id:n for n in calculate_magic_numbers(records, games)}
-        self.assertEqual(numbers[1].number, 163-90-66-1)
-        self.assertTrue(numbers[1].tiebreak.favors_team)
 
-    def test_h2h_tied_does_not_reduce(self):
-        games = []
-        for home_winner in (True, False):
-            games.append({"status":{"abstractGameState":"Final"},"teams":{"home":{"team":{"id":1},"isWinner":home_winner},"away":{"team":{"id":2},"isWinner":not home_winner}}})
-        tb = _head_to_head(games, 1, 2)
-        self.assertFalse(tb.decided)
-        self.assertFalse(tb.favors_team)
+    def test_division_leader_uses_division_race(self):
+        items = {x.team.abbreviation: x for x in calculate_magic_numbers(self.records)}
+        atl = items["ATL"]
+        self.assertEqual(atl.race, "DIV")
+        self.assertEqual(atl.cutoff_team.abbreviation, "PHI")
+        self.assertEqual(atl.number, 7)
 
-    def test_partial_h2h_lead_is_not_treated_as_decided(self):
-        games = [{"status":{"abstractGameState":"Final"},"teams":{"home":{"team":{"id":1},"isWinner":True},"away":{"team":{"id":2},"isWinner":False}}}, {"status":{"abstractGameState":"Preview"},"teams":{"home":{"team":{"id":1}},"away":{"team":{"id":2}}}}]
-        tb = _head_to_head(games, 1, 2)
-        self.assertFalse(tb.decided)
+    def test_non_leader_uses_wild_card_race(self):
+        items = {x.team.abbreviation: x for x in calculate_magic_numbers(self.records)}
+        sdp = items["SDP"]
+        self.assertEqual(sdp.race, "WC")
+        self.assertEqual(sdp.cutoff_team.abbreviation, "ARI")
+        self.assertEqual(sdp.number, 8)
 
+    def test_wild_card_contender_outside_field_still_shows_wc(self):
+        items = {x.team.abbreviation: x for x in calculate_magic_numbers(self.records)}
+        phi = items["PHI"]
+        self.assertEqual(phi.race, "WC")
+        self.assertEqual(phi.cutoff_team.abbreviation, "ARI")
 
 if __name__ == "__main__":
     unittest.main()
