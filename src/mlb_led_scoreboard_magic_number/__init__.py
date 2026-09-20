@@ -44,6 +44,7 @@ class MagicNumber:
     team: TeamRecord
     number: int
     cutoff_team: Optional[TeamRecord]
+    race: str  # "DIV" for a division leader, otherwise "WC"
     tiebreak: Optional[TiebreakInfo] = None
     clinched: bool = False
 
@@ -145,26 +146,64 @@ def _head_to_head(games: list[dict[str, Any]], team_id: int, opponent_id: int) -
     )
 
 
-def calculate_magic_numbers(records: list[TeamRecord], games: Optional[list[dict[str, Any]]] = None) -> list[MagicNumber]:
-    playoff, cutoffs = _playoff_field(records)
-    playoff_ids = {t.team_id for t in playoff}
+def _division_cutoff(team: TeamRecord, records: list[TeamRecord]) -> Optional[TeamRecord]:
+    """Closest current challenger to a division-leading team."""
+    challengers = [
+        t for t in records
+        if t.division_id == team.division_id and t.team_id != team.team_id
+    ]
+    if not challengers:
+        return None
+    return sorted(challengers, key=lambda t: (t.division_rank, *_sort_key(t)))[0]
+
+
+def _wild_card_cutoff(team: TeamRecord, records: list[TeamRecord]) -> Optional[TeamRecord]:
+    """Current first team outside the three Wild Card positions in the team's league."""
+    league = [t for t in records if t.league_id == team.league_id]
+    divisions: dict[int, list[TeamRecord]] = {}
+    for candidate in league:
+        divisions.setdefault(candidate.division_id, []).append(candidate)
+
+    division_winner_ids: set[int] = set()
+    for group in divisions.values():
+        winner = sorted(group, key=lambda t: (t.division_rank, *_sort_key(t)))[0]
+        division_winner_ids.add(winner.team_id)
+
+    wc_pool = [t for t in league if t.team_id not in division_winner_ids]
+    wc_pool.sort(key=lambda t: (
+        t.wild_card_rank if t.wild_card_rank < 99 else 99,
+        *_sort_key(t),
+    ))
+    return wc_pool[3] if len(wc_pool) >= 4 else None
+
+
+def calculate_magic_numbers(
+    records: list[TeamRecord],
+    games: Optional[list[dict[str, Any]]] = None,
+) -> list[MagicNumber]:
+    """Calculate the race that matters for each club."""
     result: list[MagicNumber] = []
 
     for team in records:
-        cutoff = cutoffs.get(team.league_id)
+        race = "DIV" if team.division_rank == 1 else "WC"
+        cutoff = _division_cutoff(team, records) if race == "DIV" else _wild_card_cutoff(team, records)
+
         if cutoff is None:
-            result.append(MagicNumber(team, 0, None, None, True))
+            result.append(MagicNumber(team, 0, None, race, None, True))
             continue
 
-        # 163 - wins - cutoff losses is the ordinary magic number for beating
-        # the cutoff outright. If the target has already clinched the head-to-
-        # head tiebreak over that cutoff, a tied record is enough, reducing
-        # the number by one. We deliberately do not infer an advantage from a
-        # partially completed season series.
         tb = _head_to_head(games or [], team.team_id, cutoff.team_id) if games is not None else None
         adjustment = 1 if tb and tb.favors_team else 0
         number = max(0, 163 - team.wins - cutoff.losses - adjustment)
-        result.append(MagicNumber(team, number, cutoff, tb, team.team_id in playoff_ids and number == 0))
+
+        result.append(MagicNumber(
+            team=team,
+            number=number,
+            cutoff_team=cutoff,
+            race=race,
+            tiebreak=tb,
+            clinched=(number == 0),
+        ))
 
     return result
 
@@ -347,15 +386,17 @@ class Renderer(api.PluginRenderer):
         graphics.DrawLine(canvas, 0, 10, self.width - 1, 10, dim)
 
         if item.clinched or item.number == 0:
-            graphics.DrawText(canvas, self.font, 2, 20, green, "CLINCHED")
+            clinch_text = "DIV CLINCHED" if item.race == "DIV" else "WC CLINCHED"
+            self._draw_text(data, canvas, graphics, clinch_text, 20, green, scrolling_text_pos, center=True)
         else:
-            graphics.DrawText(canvas, self.font, 2, 20, white, "PLAYOFF")
+            graphics.DrawText(canvas, self.font, 2, 20, white, item.race)
             graphics.DrawText(canvas, self.font, 42, 20, yellow, f"M#{item.number}")
 
         if self.config.show_cutoff and item.cutoff_team:
             cutoff = item.cutoff_team
             tb = item.tiebreak.label if item.tiebreak else ""
-            cutoff_text = f"CUT {cutoff.abbreviation or cutoff.short_name} {cutoff.wins}-{cutoff.losses} {tb}".strip()
+            prefix = "2ND" if item.race == "DIV" else "WC4"
+            cutoff_text = f"{prefix} {cutoff.abbreviation or cutoff.short_name} {cutoff.wins}-{cutoff.losses} {tb}".strip()
             self._draw_text(data, canvas, graphics, cutoff_text, 30, gray, scrolling_text_pos, center=False)
         elif item.tiebreak and item.tiebreak.label:
             graphics.DrawText(canvas, self.font, 2, 30, gray, item.tiebreak.label)
