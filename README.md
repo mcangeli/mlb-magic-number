@@ -45,7 +45,7 @@ The baseline is the conventional regular-season formula:
 
 `163 - target wins - cutoff losses`
 
-The cutoff is the current fourth wild-card team in the target's league. The plugin also reads the completed regular-season schedule and checks the target's season-series record against the cutoff. If the season series is already decided in the target's favor, a tied final record is enough and the magic number is reduced by one. A partially completed or tied season series is not assumed to favor either team.
+If the displayed team currently leads its division, the cutoff is its closest division challenger and the screen shows `DIV`. Otherwise, the cutoff is the current first team outside the three Wild Card positions and the screen shows `WC`. The plugin also reads the completed regular-season schedule and checks the target's season-series record against the cutoff. If the season series is already decided in the target's favor, a tied final record is enough and the magic number is reduced by one. A partially completed or tied season series is not assumed to favor either team.
 
 This is intentionally conservative and is not a replacement for MLB's official clinching computation in every multi-team tie scenario.
 
@@ -62,11 +62,11 @@ The default 64x32 layout is compact:
 ```text
 ATLANTA  82-64
 ----------------
-PLAYOFF        M#7
-CUT SEA 75-71 H2H+
+DIV            M#7
+2ND PHI 84-66 H2H+
 ```
 
-A clinched team displays `CLINCHED` instead of a magic number.
+A clinched race displays `DIV CLINCHED` or `WC CLINCHED`. Long header, clinch, and comparison text scrolls automatically when it exceeds the 64-pixel display width.
 
 ## Tests
 
@@ -79,3 +79,10 @@ python -m pip install -e .
 
 <img width="1349" height="1016" alt="image" src="https://github.com/user-attachments/assets/aa7c3bc0-bc74-4b77-b503-6a9bd0a0f22a" />
 
+
+## v0.3.0 race-aware display
+
+- Division leaders show the division race and magic number against the closest division challenger.
+- Teams not leading their division show the Wild Card race and magic number against the first team outside the three Wild Card spots.
+- The comparison line uses `2ND` for a division challenger and `WC4` for the Wild Card cutoff.
+- Head-to-head tiebreak adjustment and marquee scrolling are retained.
