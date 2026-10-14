@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime, timezone
 from typing import TYPE_CHECKING, Any, Optional
 import time
 
@@ -247,6 +247,20 @@ def _fetch_season_games() -> list[dict[str, Any]]:
     return games
 
 
+def _regular_season_in_progress(games: list[dict[str, Any]], today: Optional[date] = None) -> bool:
+    """Use MLB's scheduled regular-season dates, including off days."""
+    today = today or datetime.now(timezone.utc).date()
+    dates = []
+    for game in games:
+        game_date = str(game.get("officialDate") or game.get("gameDate") or "")[:10]
+        if game_date:
+            try:
+                dates.append(date.fromisoformat(game_date))
+            except ValueError:
+                continue
+    return bool(dates) and min(dates) <= today <= max(dates)
+
+
 class Config(api.PluginConfig):
     def __init__(self, base: api.MLBConfig) -> None:
         plugin = base.plugin_config or {}
@@ -263,6 +277,7 @@ class Data(api.PluginData):
         self.magic_numbers: list[MagicNumber] = []
         self.error = False
         self.error_message = ""
+        self.regular_season_active = False
         self._last_update = 0.0
         self._selected_index = 0
         self._last_selection = 0.0
@@ -275,6 +290,14 @@ class Data(api.PluginData):
         try:
             records = _fetch_standings()
             games = _fetch_season_games()
+            self.regular_season_active = _regular_season_in_progress(games)
+            if not self.regular_season_active:
+                self.magic_numbers = []
+                self.error = False
+                self.error_message = ""
+                self._last_update = now
+                LOGGER.info("[Magic Number] Regular season inactive; hiding screen")
+                return api.UpdateStatus.SUCCESS
             numbers = calculate_magic_numbers(records, games)
             LOGGER.info("[Magic Number] Refreshing Stats for %s", self.config.team_query)
 
@@ -302,6 +325,7 @@ class Data(api.PluginData):
             return api.UpdateStatus.SUCCESS
         except Exception as exc:
             self.error = True
+            self.regular_season_active = False
             self.error_message = str(exc)
             LOGGER.warning("Magic-number update failed: %s", exc)
             return api.UpdateStatus.FAILURE
@@ -333,7 +357,7 @@ class Renderer(api.PluginRenderer):
         return 0.12
 
     def can_render(self, data: Data) -> bool:
-        return data.error or bool(data.magic_numbers)
+        return data.regular_season_active and bool(data.magic_numbers)
 
     @staticmethod
     def _text_width(graphics: api.renderer.graphics, canvas: "Canvas", font: Any, text: str) -> int:
