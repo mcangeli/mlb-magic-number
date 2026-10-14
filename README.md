@@ -86,3 +86,7 @@ python -m pip install -e .
 - Teams not leading their division show the Wild Card race and magic number against the first team outside the three Wild Card spots.
 - The comparison line uses `2ND` for a division challenger and `WC4` for the Wild Card cutoff.
 - Head-to-head tiebreak adjustment and marquee scrolling are retained.
+
+## Regular-season visibility (v0.3.1)
+
+The plugin is eligible for rotation only from the first through the last scheduled MLB regular-season game. Off days and the All-Star break remain in season. Before Opening Day, during the postseason, and in the offseason, the screen is hidden automatically. Schedule lookup failures do not force an offseason state; errors are logged and the screen remains hidden until a successful refresh.
